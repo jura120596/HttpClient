@@ -9,19 +9,16 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
+import com.example.myapplication.services.UserService;
+
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 public class MainActivity extends AppCompatActivity
         implements View.OnClickListener {
@@ -29,6 +26,9 @@ public class MainActivity extends AppCompatActivity
     String surnameString, nameString;
     Button send;
     TextView responseView;
+    Retrofit retrofit;
+    UserService userService;
+    User userFromServer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,6 +38,12 @@ public class MainActivity extends AppCompatActivity
         send = findViewById(R.id.send);
         responseView = findViewById(R.id.response);
         send.setOnClickListener(this);
+        retrofit = new Retrofit.Builder()
+                .baseUrl("http://192.168.137.1:8081")
+                .addConverterFactory(ScalarsConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        userService = retrofit.create(UserService.class);
     }
 
     @Override
@@ -51,27 +57,19 @@ public class MainActivity extends AppCompatActivity
     private class HttpTask extends AsyncTask<Void, Void, String> {
         @Override
         protected String doInBackground(Void... voids) {
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost = new HttpPost("http://192.168.137.1:8081/hello");
-            ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
-            nameValuePairs.add(new BasicNameValuePair("surname", surnameString));
-            nameValuePairs.add(new BasicNameValuePair("name", nameString));
+            Call<User> response = userService.greetingUser(nameString, surnameString);
             try {
-                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs, "UTF-8"));
-                HttpResponse response = httpclient.execute(httppost);
-                HttpEntity entity = response.getEntity();
-                String body = EntityUtils.toString(entity);
-                return body;
+                Response<User> body = response.execute();
+                userFromServer = body.body();
             } catch (IOException e) {
                 e.printStackTrace();
-
             }
-            return "Произошла ошибка, проверь соединение с интернетом";
+            return null;
         }
 
         @Override
         protected void onPostExecute(String s) {
-            responseView.setText(s);
+            responseView.setText(userFromServer.school + " - " + userFromServer.firstname);
         }
     }
 }
